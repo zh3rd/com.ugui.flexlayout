@@ -1,0 +1,15 @@
+{
+  "name": "com.ugui.flexlayout",
+  "version": "1.0.0",
+  "displayName": "FlexLayout",
+  "description": "A flex-style layout package for Unity UGUI.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Flex Team"
+  },
+  "keywords": [
+    "layout",
+    "flexbox",
+    "ui"
+  ]
+}
