@@ -138,7 +138,14 @@ namespace UnityEngine.UI.Flex
                     && TryResolveParentAxisInput(RectTransform.Axis.Horizontal, out parentConstraintX);
                 target.x = FlexSizing.ResolveConstrainedAxisSize(
                     style.width,
-                    new FlexAutoAxisContext(false, 0f, hasParentConstraintX, parentConstraintX, autoContent),
+                    new FlexAutoAxisContext(
+                        hasParentAssignedSize: false,
+                        parentAssignedSize: 0f,
+                        hasPercentReferenceSize: hasParentConstraintX,
+                        percentReferenceSize: parentConstraintX,
+                        hasExternalConstraint: false,
+                        externalConstraintSize: 0f,
+                        contentSize: autoContent),
                     style.minWidth,
                     style.maxWidth);
             }
@@ -153,7 +160,14 @@ namespace UnityEngine.UI.Flex
                     && TryResolveParentAxisInput(RectTransform.Axis.Vertical, out parentConstraintY);
                 target.y = FlexSizing.ResolveConstrainedAxisSize(
                     style.height,
-                    new FlexAutoAxisContext(false, 0f, hasParentConstraintY, parentConstraintY, autoContent),
+                    new FlexAutoAxisContext(
+                        hasParentAssignedSize: false,
+                        parentAssignedSize: 0f,
+                        hasPercentReferenceSize: hasParentConstraintY,
+                        percentReferenceSize: parentConstraintY,
+                        hasExternalConstraint: false,
+                        externalConstraintSize: 0f,
+                        contentSize: autoContent),
                     style.minHeight,
                     style.maxHeight);
             }

@@ -604,6 +604,50 @@ namespace UnityEngine.UI.Flex.Tests
         }
 
         [Test]
+        public void FlexLayout_With_FlexNode_Root_Percent_Uses_Direct_Parent_Rect_Not_Content()
+        {
+            var parent = new GameObject("Parent", typeof(RectTransform));
+            var parentRect = parent.GetComponent<RectTransform>();
+            parentRect.anchorMin = Vector2.up;
+            parentRect.anchorMax = Vector2.up;
+            parentRect.pivot = Vector2.up;
+            parentRect.sizeDelta = new Vector2(400f, 300f);
+
+            var root = new GameObject("Root", typeof(RectTransform), typeof(FlexLayout), typeof(FlexNodeComponent));
+            var rootRect = root.GetComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.up;
+            rootRect.anchorMax = Vector2.up;
+            rootRect.pivot = Vector2.up;
+            rootRect.SetParent(parentRect, false);
+            rootRect.sizeDelta = new Vector2(50f, 50f);
+
+            var rootLayout = root.GetComponent<FlexLayout>();
+            rootLayout.style.flexDirection = FlexDirection.Row;
+            rootLayout.style.flexWrap = FlexWrap.NoWrap;
+            rootLayout.style.alignItems = AlignItems.FlexStart;
+            rootLayout.style.justifyContent = JustifyContent.FlexStart;
+
+            var rootNode = root.GetComponent<FlexNodeComponent>();
+            rootNode.style.width = FlexValue.Percent(50f);
+            rootNode.style.height = FlexValue.Percent(50f);
+
+            var child = new GameObject("Child", typeof(RectTransform));
+            var childRect = child.GetComponent<RectTransform>();
+            childRect.anchorMin = Vector2.up;
+            childRect.anchorMax = Vector2.up;
+            childRect.pivot = Vector2.up;
+            childRect.sizeDelta = new Vector2(500f, 40f);
+            childRect.SetParent(root.transform, false);
+
+            rootLayout.MarkLayoutDirty();
+
+            Assert.That(rootRect.sizeDelta.x, Is.EqualTo(200f).Within(0.01f));
+            Assert.That(rootRect.sizeDelta.y, Is.EqualTo(150f).Within(0.01f));
+
+            Object.DestroyImmediate(parent);
+        }
+
+        [Test]
         public void MarkLayoutDirty_Node_And_Item_Children_Use_New_Authoring_Components()
         {
             var root = new GameObject("Root", typeof(RectTransform));
@@ -767,6 +811,23 @@ namespace UnityEngine.UI.Flex.Tests
         }
 
         [Test]
+        public void ResolveAxisSize_Percent_Uses_Percent_Reference_When_Present()
+        {
+            var result = FlexSizing.ResolveAxisSize(
+                FlexValue.Percent(25f),
+                new FlexAutoAxisContext(
+                    hasParentAssignedSize: false,
+                    parentAssignedSize: 0f,
+                    hasPercentReferenceSize: true,
+                    percentReferenceSize: 320f,
+                    hasExternalConstraint: false,
+                    externalConstraintSize: 0f,
+                    contentSize: 120f));
+
+            Assert.AreEqual(80f, result);
+        }
+
+        [Test]
         public void ResolveConstrainedAxisSize_Applies_Min_Constraint()
         {
             var result = FlexSizing.ResolveConstrainedAxisSize(
@@ -876,6 +937,24 @@ namespace UnityEngine.UI.Flex.Tests
         }
 
         [Test]
+        public void ResolveFlexBasis_Auto_Uses_Main_Axis_Percent_Reference()
+        {
+            var result = FlexSizing.ResolveFlexBasis(
+                FlexValue.Auto(),
+                FlexValue.Percent(50f),
+                new FlexAutoAxisContext(
+                    hasParentAssignedSize: false,
+                    parentAssignedSize: 0f,
+                    hasPercentReferenceSize: true,
+                    percentReferenceSize: 300f,
+                    hasExternalConstraint: false,
+                    externalConstraintSize: 0f,
+                    contentSize: 120f));
+
+            Assert.AreEqual(150f, result);
+        }
+
+        [Test]
         public void Implicit_Item_Defaults_Use_Row_Main_Axis_Width()
         {
             var defaults = FlexSizing.ResolveImplicitItemDefaults(
@@ -971,6 +1050,34 @@ namespace UnityEngine.UI.Flex.Tests
             var measured = FlexMeasure.MeasureSubtree(store, nodeId);
 
             Assert.AreEqual(new FlexMeasuredSize(210f, 70f), measured);
+        }
+
+        [Test]
+        public void MeasureSubtree_Percent_Uses_Provided_Percent_Reference()
+        {
+            var store = new FlexNodeStore();
+            var nodeId = store.CreateNode(new FlexNodeModel
+            {
+                IsExplicit = true,
+                Style = new FlexStyle
+                {
+                    width = FlexValue.Percent(50f),
+                    height = FlexValue.Percent(25f),
+                },
+                ContentWidth = 500f,
+                ContentHeight = 300f,
+            });
+
+            var measured = FlexMeasure.MeasureSubtree(
+                store,
+                nodeId,
+                new FlexPercentReferenceOverrides(
+                    hasWidthReference: true,
+                    widthReference: 400f,
+                    hasHeightReference: true,
+                    heightReference: 200f));
+
+            Assert.AreEqual(new FlexMeasuredSize(200f, 50f), measured);
         }
 
         [Test]

@@ -10,20 +10,45 @@ namespace UnityEngine.UI.Flex.Core
         public FlexAutoAxisContext(
             bool hasParentAssignedSize,
             float parentAssignedSize,
+            bool hasPercentReferenceSize,
+            float percentReferenceSize,
             bool hasExternalConstraint,
             float externalConstraintSize,
             float contentSize)
         {
             HasParentAssignedSize = hasParentAssignedSize;
             ParentAssignedSize = parentAssignedSize;
+            HasPercentReferenceSize = hasPercentReferenceSize;
+            PercentReferenceSize = percentReferenceSize;
             HasExternalConstraint = hasExternalConstraint;
             ExternalConstraintSize = externalConstraintSize;
             ContentSize = contentSize;
         }
 
+        public FlexAutoAxisContext(
+            bool hasParentAssignedSize,
+            float parentAssignedSize,
+            bool hasExternalConstraint,
+            float externalConstraintSize,
+            float contentSize)
+            : this(
+                hasParentAssignedSize,
+                parentAssignedSize,
+                false,
+                0f,
+                hasExternalConstraint,
+                externalConstraintSize,
+                contentSize)
+        {
+        }
+
         public bool HasParentAssignedSize { get; }
 
         public float ParentAssignedSize { get; }
+
+        public bool HasPercentReferenceSize { get; }
+
+        public float PercentReferenceSize { get; }
 
         public bool HasExternalConstraint { get; }
 
@@ -186,6 +211,11 @@ namespace UnityEngine.UI.Flex.Core
                     return context.ParentAssignedSize * size.value * 0.01f;
                 }
 
+                if (context.HasPercentReferenceSize)
+                {
+                    return context.PercentReferenceSize * size.value * 0.01f;
+                }
+
                 if (context.HasExternalConstraint)
                 {
                     return context.ExternalConstraintSize * size.value * 0.01f;
@@ -264,41 +294,34 @@ namespace UnityEngine.UI.Flex.Core
         public static float ResolveFlexBasis(
             FlexValue flexBasis,
             FlexValue mainAxisSize,
+            FlexAutoAxisContext context)
+        {
+            if (flexBasis.mode != FlexSizeMode.Auto)
+            {
+                return ResolveAxisSize(flexBasis, context);
+            }
+
+            return ResolveAxisSize(mainAxisSize, context);
+        }
+
+        public static float ResolveFlexBasis(
+            FlexValue flexBasis,
+            FlexValue mainAxisSize,
             float contentSize,
             bool hasExternalConstraint,
             float externalConstraintSize)
         {
-            if (flexBasis.mode == FlexSizeMode.Points)
-            {
-                return flexBasis.value;
-            }
-
-            if (flexBasis.mode == FlexSizeMode.Percent)
-            {
-                if (hasExternalConstraint)
-                {
-                    return externalConstraintSize * flexBasis.value * 0.01f;
-                }
-
-                return contentSize;
-            }
-
-            if (mainAxisSize.mode == FlexSizeMode.Points)
-            {
-                return mainAxisSize.value;
-            }
-
-            if (mainAxisSize.mode == FlexSizeMode.Percent && hasExternalConstraint)
-            {
-                return externalConstraintSize * mainAxisSize.value * 0.01f;
-            }
-
-            if (hasExternalConstraint)
-            {
-                return externalConstraintSize;
-            }
-
-            return contentSize;
+            return ResolveFlexBasis(
+                flexBasis,
+                mainAxisSize,
+                new FlexAutoAxisContext(
+                    hasParentAssignedSize: false,
+                    parentAssignedSize: 0f,
+                    hasPercentReferenceSize: false,
+                    percentReferenceSize: 0f,
+                    hasExternalConstraint: hasExternalConstraint,
+                    externalConstraintSize: externalConstraintSize,
+                    contentSize: contentSize));
         }
 
         public static FlexImplicitItemDefaults ResolveImplicitItemDefaults(

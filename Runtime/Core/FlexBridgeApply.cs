@@ -5,15 +5,16 @@ namespace UnityEngine.UI.Flex.Core
 {
     internal static partial class FlexBridge
     {
-        private static FlexMeasuredSize MeasureRoot(FlexNodeStore store, FlexNodeId rootId)
+        private static FlexMeasuredSize MeasureRoot(FlexLayout rootLayout, FlexNodeStore store, FlexNodeId rootId)
         {
             var samplingStartedAt = FlexRuntimeSampling.BeginSample();
             using var scope = FlexProfiler.MeasureRoot.Auto();
             try
             {
-                var rootNode = store.GetNode(rootId);
-                var rootMeasured = FlexMeasure.MeasureSubtree(store, rootId);
+                var percentReferences = ResolveDirectParentPercentReferences(rootLayout.rectTransform);
+                var rootMeasured = FlexMeasure.MeasureSubtree(store, rootId, percentReferences);
 
+                var rootNode = store.GetNode(rootId);
                 rootNode.HasExternalWidthConstraint = true;
                 rootNode.ExternalWidthConstraint = rootMeasured.Width;
                 rootNode.HasExternalHeightConstraint = true;
@@ -26,6 +27,37 @@ namespace UnityEngine.UI.Flex.Core
             {
                 FlexRuntimeSampling.AddMeasureRootTicks(samplingStartedAt);
             }
+        }
+
+        private static FlexPercentReferenceOverrides ResolveDirectParentPercentReferences(RectTransform rootRectTransform)
+        {
+            if (!(rootRectTransform.parent is RectTransform parentRect))
+            {
+                return FlexPercentReferenceOverrides.None;
+            }
+
+            var hasWidthReference = TryResolveRectAxisConstraint(parentRect, RectTransform.Axis.Horizontal, out var widthReference);
+            var hasHeightReference = TryResolveRectAxisConstraint(parentRect, RectTransform.Axis.Vertical, out var heightReference);
+            return new FlexPercentReferenceOverrides(hasWidthReference, widthReference, hasHeightReference, heightReference);
+        }
+
+        private static bool TryResolveRectAxisConstraint(RectTransform rectTransform, RectTransform.Axis axis, out float value)
+        {
+            value = 0f;
+            var rectSize = axis == RectTransform.Axis.Horizontal
+                ? rectTransform.rect.width
+                : rectTransform.rect.height;
+            if (rectSize > 0f)
+            {
+                value = rectSize;
+                return true;
+            }
+
+            var sizeDelta = axis == RectTransform.Axis.Horizontal
+                ? rectTransform.sizeDelta.x
+                : rectTransform.sizeDelta.y;
+            value = Mathf.Abs(sizeDelta);
+            return value > 0f;
         }
 
         private static void ApplyRootSize(RectTransform rectTransform, FlexMeasuredSize rootMeasured)

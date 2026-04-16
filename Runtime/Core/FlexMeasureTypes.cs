@@ -579,6 +579,31 @@ namespace UnityEngine.UI.Flex.Core
         }
     }
 
+    internal readonly struct FlexPercentReferenceOverrides
+    {
+        public FlexPercentReferenceOverrides(
+            bool hasWidthReference,
+            float widthReference,
+            bool hasHeightReference,
+            float heightReference)
+        {
+            HasWidthReference = hasWidthReference;
+            WidthReference = widthReference;
+            HasHeightReference = hasHeightReference;
+            HeightReference = heightReference;
+        }
+
+        public bool HasWidthReference { get; }
+
+        public float WidthReference { get; }
+
+        public bool HasHeightReference { get; }
+
+        public float HeightReference { get; }
+
+        public static FlexPercentReferenceOverrides None => default;
+    }
+
     internal struct FlexNodeModel
     {
         public FlexNodeId Id;

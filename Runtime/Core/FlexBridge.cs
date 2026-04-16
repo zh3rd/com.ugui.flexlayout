@@ -128,7 +128,7 @@ namespace UnityEngine.UI.Flex.Core
             }
 
             using var measurePass = FlexMeasure.BeginMeasurePass();
-            plan.RootMeasured = MeasureRoot(plan.Store, plan.RootId);
+            plan.RootMeasured = MeasureRoot(plan.RootLayout, plan.Store, plan.RootId);
         }
 
         internal static void ApplyPlan(FlexRebuildPlan plan)

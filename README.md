@@ -1,148 +1,112 @@
 # UGUI FlexLayout
 
-`com.ugui.flexlayout` is a Unity package for arranging UGUI `RectTransform` hierarchies with a flex-style model.
+![封面](README-COVER.jpg)
 
-## Scope
+`com.ugui.flexlayout` 是一个面向 Unity UGUI 的 flex 风格布局包，用来驱动 `RectTransform` 层级的排布。
 
-This package targets Unity UGUI authoring and runtime layout. It provides:
+它实现的是适合 UGUI 的 flex 子集，重点放在 Unity 组件模型、编辑器行为和运行时重建流程上，而不是完整复刻 CSS。
+
+## 组件模型
+
+当前包提供四个核心组件：
 
 - `FlexLayout`
-  - container behavior
-  - implicit child defaults
-  - dirty scheduling and rebuild entry
+  - 容器语义
+  - 隐式子节点默认规则
+  - dirty 标记与重建入口
 - `FlexNode`
-  - self sizing
-  - min/max
+  - 自身尺寸策略
+  - min / max
   - aspect ratio
-  - relative / absolute participation mode
+  - relative / absolute
 - `FlexItem`
-  - item behavior inside a parent flex container
+  - 作为父容器子项时的 item 语义
 - `FlexText`
-  - text-oriented node measurement override for TMP-based content
+  - 覆盖默认内容测量源，用于 `TextMeshProUGUI`
 
-The package focuses on a practical flex subset for UGUI instead of full CSS parity.
+职责边界是固定的：
 
-## Quick Start
+- `FlexLayout` 负责容器
+- `FlexNode` 负责自身尺寸
+- `FlexItem` 负责作为 item 时的主轴分配行为
+- `FlexText` 只覆盖内容测量，不重定义整套布局语义
 
-1. Add `FlexLayout` to a container `RectTransform`.
-2. Optionally add `FlexNode` to the same object when the container also needs explicit self sizing.
-3. Add `FlexNode`, `FlexItem`, or `FlexText` only to children that need explicit overrides.
-4. Leave simple children without flex components to use the container's implicit defaults.
+## 基本使用
 
-Typical setup:
+常见组合如下：
 
-- parent: `FlexLayout`
-- child with explicit width or height: `FlexNode`
-- child with explicit grow, shrink, or basis: `FlexItem`
-- child with both self sizing and item overrides: `FlexNode` + `FlexItem`
-- TMP text child with text-based measurement: `FlexText`
+- 父节点作为容器：挂 `FlexLayout`
+- 节点需要显式控制自身宽高：挂 `FlexNode`
+- 子节点需要控制 grow / shrink / basis：挂 `FlexItem`
+- TMP 文本需要按文本内容测量：挂 `FlexText`
 
-## Authoring Model
+普通子节点不需要为了参与布局而全部挂组件。只有在默认行为不够时，才显式添加对应组件覆盖默认规则。
 
-### Implicit child behavior
+## 隐式子节点
 
-Children without explicit flex authoring components are still treated as in-flow children of the parent `FlexLayout`.
+没有挂 `FlexNode` / `FlexItem` / `FlexText` 的直接子节点，仍然会作为父 `FlexLayout` 的直接子项参与布局。
 
-Their behavior comes from:
+隐式子节点的规则分成两部分：
 
-- implicit item defaults stored on the parent `FlexLayout`
-- current `RectTransform` size as the default node content source
+- `item` 侧默认值来自父 `FlexLayout`
+- `node` 侧默认内容输入来自子节点自己的 `RectTransform`
 
-This keeps ordinary UGUI hierarchies light:
+这意味着：
 
-- the child still participates in the parent's layout
-- the parent drives its position while it remains in flow
-- item-side defaults come from the parent layout
-- self sizing still defaults to the child `RectTransform`
+- 不挂组件的子节点，默认也会被父布局参与主轴和交叉轴排布
+- 只有当某个子节点需要不同的尺寸策略、item 行为或文本测量行为时，才需要显式挂组件
 
-Use explicit components only when the default behavior must change:
+## 尺寸规则
 
-- add `FlexNode` to override self sizing rules
-- add `FlexItem` to override grow, shrink, basis, or align-self
-- add `FlexText` to measure from TMP content instead of plain rect size
-
-### Size semantics
+`FlexNode` 的 `width / height` 支持：
 
 - `Points`
-  - definite value stored on the component
 - `Auto`
-  - resolves from the node content source
-  - for a normal node, content defaults to current `RectTransform` size
-  - for `FlexText`, content comes from text measurement
 - `Percent`
-  - resolves against the available parent size when that size is definite
 
-### Position semantics
+语义如下：
 
-- `Relative`
-  - participates in normal flex flow
-- `Absolute`
-  - leaves flex flow
-  - still uses the parent `RectTransform` coordinate space, but not flex line placement
+- `Points`
+  - 显式点值
+- `Auto`
+  - 统一表示“使用节点自己的内容尺寸”
+  - 普通节点默认读取当前 `RectTransform`
+  - `FlexText` 则改为读取文本测量结果
+- `Percent`
+  - 相对直接父 `RectTransform` 的该轴尺寸
+  - 如果没有可用的父尺寸输入，则退回 `Auto`
 
-## Tracker And Ownership
+作为 item 时：
 
-The package uses driven `RectTransform` ownership rules instead of leaving layout-controlled values freely editable.
+- `flex-basis` 决定主轴基准
+- 当 `flex-basis = Auto` 时，会回退到该节点主轴上的 `FlexNode` 尺寸策略
 
-The practical rule is:
+## Tracker 与控制权
 
-- when flex owns a value, the corresponding `RectTransform` field is driven
-- when flex does not own a value, the package does not mirror or serialize a second copy of it
+布局系统通过 `DrivenRectTransformTracker` 管理自己拥有的 `RectTransform` 字段。
 
-For direct children of a `FlexLayout`:
+控制权规则是：
 
-- in-flow children have position driven by the parent layout
-- size is driven only when the resolved node policy says flex owns that axis
-- implicit children still participate in tracker ownership; they are not unmanaged children
+- in-flow 子节点的位置由父 `FlexLayout` 驱动
+- 节点尺寸是否被驱动，取决于解析后的 `FlexNode` 规则
+- 隐式子节点不是例外；只要当前布局规则要求驱动，就会进入 tracker
+- 要手动编辑某个被布局控制的字段，必须先移除或禁用对应的布局控制来源
 
-For standalone nodes:
+这和 Unity 自带 layout 组件的基本思路一致：谁拥有布局控制权，谁就负责写回对应字段。
 
-- `FlexNode` can drive its own size without a parent `FlexLayout`
-- `Auto` resolves from the node content source
-- `Percent` resolves against the direct parent `RectTransform` only when a definite parent size exists
+## 运行时结构
 
-Tracker refresh follows the resolved authoring model:
+当前运行时核心按阶段组织：
 
-- disabling a controlling component releases the corresponding driven ownership
-- changing parent layout semantics refreshes direct child ownership immediately
-- edit mode favors immediate visible feedback
-- play mode favors queued rebuilds through the staged rebuild pipeline
+- `Collect`
+  - 从 Unity 组件树读取 authoring 输入
+- `Compute`
+  - 进行 measure / allocate / arrange
+- `Apply`
+  - 把结果写回 `RectTransform`
 
-## Runtime Architecture
+在编辑器中，修改后会尽量立即刷新；在运行时，则通过统一的 dirty 入口调度重建。
 
-The runtime is split into staged parts:
+## Samples
 
-- collect
-  - read authoring state from Unity components
-- compute
-  - resolve, measure, allocate, arrange
-- apply
-  - write final values back to `RectTransform`
-
-Core files live under:
-
-- `Runtime/Core/FlexBridge*.cs`
-- `Runtime/Core/FlexMeasure*.cs`
-- `Runtime/Core/FlexRebuildPipeline.cs`
-
-Dirty behavior:
-
-- `MarkLayoutDirty()`
-  - immediate rebuild
-- `RequestLayoutDirty()`
-  - delayed rebuild through runtime or editor queue
-
-## Design Notes
-
-- `FlexLayout` is a container component.
-- `FlexNode` owns self sizing.
-- `FlexItem` owns participation inside a parent flex container.
-- `FlexText` specializes node measurement for text content.
-- The engine works on direct parent-child relationships only. A layout affects its direct children, not grandchildren directly.
-
-## Notes And Limitations
-
-- The package implements a flex-style subset, not a full CSS layout engine.
-- Text behavior depends on TMP measurement and current text settings.
-- Absolute mode currently focuses on flow exclusion, not CSS-like inset properties.
-- The current implementation focuses on direct parent-child layout relationships.
+包内提供 `Canvas Prefabs` sample，包含多个 `1920x1080` 的 UGUI Canvas 预制体，可直接导入后作为布局起点或视觉参考使用。

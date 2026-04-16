@@ -6,6 +6,14 @@ namespace UnityEngine.UI.Flex.Core
     {
         public static FlexMeasuredSize MeasureSubtree(FlexNodeStore store, FlexNodeId nodeId)
         {
+            return MeasureSubtree(store, nodeId, FlexPercentReferenceOverrides.None);
+        }
+
+        internal static FlexMeasuredSize MeasureSubtree(
+            FlexNodeStore store,
+            FlexNodeId nodeId,
+            in FlexPercentReferenceOverrides percentReferences)
+        {
             var samplingStartedAt = FlexRuntimeSampling.BeginSample();
             using var profilerScope = FlexProfiler.MeasureSubtree.Auto();
             var ownsPass = EnterMeasurePass();
@@ -42,19 +50,17 @@ namespace UnityEngine.UI.Flex.Core
 
                 var childContent = MeasureChildContent(store, node);
 
-                var widthContext = new FlexAutoAxisContext(
-                    hasParentAssignedSize: false,
-                    parentAssignedSize: 0f,
-                    hasExternalConstraint: node.HasExternalWidthConstraint,
-                    externalConstraintSize: node.ExternalWidthConstraint,
-                    contentSize: childContent.Width);
+                var widthContext = CreateMeasuredAxisContext(
+                    node,
+                    RectTransform.Axis.Horizontal,
+                    childContent.Width,
+                    percentReferences);
 
-                var heightContext = new FlexAutoAxisContext(
-                    hasParentAssignedSize: false,
-                    parentAssignedSize: 0f,
-                    hasExternalConstraint: node.HasExternalHeightConstraint,
-                    externalConstraintSize: node.ExternalHeightConstraint,
-                    contentSize: childContent.Height);
+                var heightContext = CreateMeasuredAxisContext(
+                    node,
+                    RectTransform.Axis.Vertical,
+                    childContent.Height,
+                    percentReferences);
 
                 var measuredWidth = FlexSizing.ResolveConstrainedAxisSize(
                     node.Style.width,
@@ -82,6 +88,36 @@ namespace UnityEngine.UI.Flex.Core
                 FlexRuntimeSampling.AddMeasureSubtreeTicks(samplingStartedAt);
                 ExitMeasurePass(ownsPass);
             }
+        }
+
+        private static FlexAutoAxisContext CreateMeasuredAxisContext(
+            FlexNodeModel node,
+            RectTransform.Axis axis,
+            float contentSize,
+            in FlexPercentReferenceOverrides percentReferences)
+        {
+            var isHorizontal = axis == RectTransform.Axis.Horizontal;
+            var hasPercentReference = isHorizontal
+                ? percentReferences.HasWidthReference
+                : percentReferences.HasHeightReference;
+            var percentReference = isHorizontal
+                ? percentReferences.WidthReference
+                : percentReferences.HeightReference;
+            var hasExternalConstraint = isHorizontal
+                ? node.HasExternalWidthConstraint
+                : node.HasExternalHeightConstraint;
+            var externalConstraint = isHorizontal
+                ? node.ExternalWidthConstraint
+                : node.ExternalHeightConstraint;
+
+            return new FlexAutoAxisContext(
+                hasParentAssignedSize: false,
+                parentAssignedSize: 0f,
+                hasPercentReferenceSize: hasPercentReference,
+                percentReferenceSize: percentReference,
+                hasExternalConstraint: hasExternalConstraint,
+                externalConstraintSize: externalConstraint,
+                contentSize: contentSize);
         }
 
         public static FlexMeasuredSize MeasureChildContent(FlexNodeStore store, FlexNodeModel node)

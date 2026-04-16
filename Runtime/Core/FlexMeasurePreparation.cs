@@ -235,14 +235,17 @@ namespace UnityEngine.UI.Flex.Core
             var mainAxisSize = isHorizontalMainAxis ? child.Style.width : child.Style.height;
             var hasExternalConstraint = isHorizontalMainAxis ? child.HasExternalWidthConstraint : child.HasExternalHeightConstraint;
             var externalConstraint = isHorizontalMainAxis ? child.ExternalWidthConstraint : child.ExternalHeightConstraint;
-            if (!hasExternalConstraint
-                && (child.Style.flexBasis.mode == FlexSizeMode.Percent || mainAxisSize.mode == FlexSizeMode.Percent))
-            {
-                hasExternalConstraint = true;
-                externalConstraint = availableInnerMainSize;
-            }
-
-            var basis = FlexSizing.ResolveFlexBasis(child.Style.flexBasis, mainAxisSize, contentMain, hasExternalConstraint, externalConstraint);
+            var basis = FlexSizing.ResolveFlexBasis(
+                child.Style.flexBasis,
+                mainAxisSize,
+                new FlexAutoAxisContext(
+                    hasParentAssignedSize: false,
+                    parentAssignedSize: 0f,
+                    hasPercentReferenceSize: true,
+                    percentReferenceSize: availableInnerMainSize,
+                    hasExternalConstraint: hasExternalConstraint,
+                    externalConstraintSize: externalConstraint,
+                    contentSize: contentMain));
             context.MainAxisBasisCache[cacheKey] = basis;
             return basis;
         }

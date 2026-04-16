@@ -7,6 +7,13 @@
   "author": {
     "name": "Flex Team"
   },
+  "samples": [
+    {
+      "displayName": "Canvas Prefabs",
+      "description": "Sample 1920x1080 UGUI canvas prefabs built with FlexLayout.",
+      "path": "Samples~/Canvas Prefabs"
+    }
+  ],
   "keywords": [
     "layout",
     "flexbox",
